@@ -1,0 +1,377 @@
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body>
+<style>
+    html {
+        font-family: 'Arial';
+        font-size: 12px;
+    }
+
+    .title span {
+        text-align: center;
+        display: inline-block;
+    }
+
+    .title span span {
+        display: block;
+    }
+
+    .field {
+        margin: 1em 0;
+        border: 1px solid #ddd;
+        position: relative;
+        overflow: visible;
+        will-change: transform;
+    }
+
+    .item {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        margin: -11px 0 0 -11px;
+        /*will-change: transform;*/
+        /*transition: all 0.1s linear;*/
+    }
+
+    .setting input[type="number"] {
+        width: 70px;
+    }
+
+    input[type="range"] {
+        vertical-align: top;
+    }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.common.dev.min.js"></script>-->
+<div id="app">
+<!--
+    <div class="title">
+        <span><span>{{ itemsCnt[1] }}</span>🧱</span>
+        <span><span>{{ itemsCnt[2] }}</span>✂️</span>
+        <span><span>{{ itemsCnt[3] }}</span>📃</span>
+    </div>
+-->
+<!--
+    <svg class="field" :style="fieldStyle">
+        <g class="item" v-for="item in this.items" :style="itemStyle(item)">
+            <text v-if="item.type == 1">🧱</text>
+            <text v-else-if="item.type == 2">✂️</text>
+            <text v-else="item.type == 3">📃</text>
+        </g>
+    </svg>
+-->
+    <div class="field" :style="fieldStyle">
+        <span class="item" v-for="item in this.items" :style="itemStyle(item)">
+            <span v-show="item.type == 1">🧱</span>
+            <span v-show="item.type == 2">✂️</span>
+            <span v-show="item.type == 3">📃</span>
+        </span>
+    </div>
+    <div class="setting">
+        размер: <input step="10" min="100" type="number" v-model="width">x<input step="10" min="100" type="number"
+                                                                                 v-model="height">
+        кол-во: <input type="number" step="1" min="1" v-model="cnt"/>
+        Скорость: <input type="range" v-model="speed" min="1" max="10"/> {{ this.speed }}
+        <button :disabled="gameOver" type="button" @click="play = !play"><span v-if="play">⏸</span><span v-else>⏵</span>
+        </button>
+        <button title="перезапустить" @click="refresh">🗘</button>
+    </div>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                width: 500,
+                height: 300,
+                cnt: 20,
+                setting: ['width', 'height', 'cnt', 'speed'],
+                items: [],
+                itemWidth: 22,
+                itemHeight: 22,
+                play: true,
+                speed: 5,
+                gameOver: false
+            }
+        },
+        created() {
+            for (var key in this.setting) {
+                var name = this.setting[key],
+                        val = localStorage['rps_' + name];
+                if (val) this[name] = val;
+            }
+        },
+        mounted() {
+            this.go();
+            this.tot();
+        },
+        watch: {
+            settingSave() {
+                for (var key in this.setting) {
+                    var name = this.setting[key];
+                    localStorage['rps_' + name] = this[name];
+                }
+            },
+            cnt() {
+                if (this.cnt > this.items.length) {
+                    for (var i = this.items.length; i < this.cnt; i++) {
+                        this.addItem();
+                    }
+                } else if (this.cnt < this.items.length) {
+                    var del = this.items.length - this.cnt;
+                    for (var i = 0; i < del; i++) {
+                        this.items.pop();
+                    }
+                }
+            }
+        },
+        computed: {
+            itemsCnt() {
+                var res = {
+                    1: 0,
+                    2: 0,
+                    3: 0
+                }
+                var items = this.items;
+                for (let key = 0; key < items.length; key++) {
+                    res[items[key].type]++;
+                }
+                return res;
+            },
+            interval() {
+                let res = (10 - this.speed + 2) * 10 - 10;
+                return res;
+            },
+            settingSave() {
+                return [this.width, this.height, this.cnt, this.speed].join('_');
+            },
+            fieldStyle() {
+                return {
+                    width: this.width + 'px',
+                    height: this.height + 'px'
+                }
+            },
+            minX() {
+                return this.itemWidth / 2;
+            },
+            minY() {
+                return this.itemHeight / 2;
+            },
+            maxX() {
+                return this.width - this.itemWidth / 2;
+            },
+            maxY() {
+                return this.height - this.itemHeight / 2;
+            },
+            distanceX() {
+                return Math.round(this.width / 200) || 1;
+            },
+            distanceY() {
+                return Math.round(this.height / 200) || 1;
+            }
+        },
+        methods: {
+            tot() {
+                // window.requestAnimationFrame(() => {
+                //     if (this.play) this.step();
+                //     this.tot();
+                // });
+                window.setTimeout(() => {
+                    if (this.play) this.step();
+                    this.tot();
+                }, this.interval);
+            },
+            step() {
+// перемещение
+                const items = this.items,
+                        ln = items.length,
+                        minX = this.minX,
+                        minY = this.minY,
+                        maxX = this.maxX,
+                        maxY = this.maxY;
+                for (let i = 0; i < ln; i++) {
+                    // for(var key in this.items) {
+                    var item = items[i],
+                            x = this.distanceX,
+                            y = this.distanceY;
+                    /*var x = this.distanceX + this.random(1, 5),
+                    y = this.distanceY + this.random(1, 5);*/
+                    this.moveItem(item, x, y, minX, minY, maxX, maxY);
+                }
+                this.checkCrash();
+            },
+// проверка на столкновения
+            checkCrash() {
+                var key;
+                var halfW = this.itemWidth / 2;
+                var items = this.items;
+                for (let i = 0; i < items.length; i++) {
+                    var item = items[i];
+                    if (!item.crash) {
+                        for (let j = i + 1; j < items.length; j++) {
+                            var item2 = items[j];
+                            if (!item2.crash) {
+                                if (this.isCrash(item, item2, halfW)) {
+                                    // if (Math.abs(item.x - item2.x) <= this.itemWidth / 2 && Math.abs(item.y - item2.y) <= this.itemWidth / 2) {
+                                    item.crash = true;
+                                    item.crash2 = true;
+// item.direction = this.getNewDirection(item.direction, item2.direction);
+// item2.direction = this.getNewDirection(item2.direction, item2.direction);
+                                    this.setCrashedNewDirection(item, item2);
+                                    this.changeCrashedType(item, item2);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                this.resetCrashState();
+            },
+
+            moveItem(item, dx, dy, minX, minY, maxX, maxY) {
+                let direction = item.direction;
+                let x = item.x;
+                let y = item.y;
+                if (direction == 1) { //	↗
+                    x += dx;
+                    y -= dy;
+                    if (item.y <= minX) {
+                        direction = 2;
+                    } else if (item.x >= maxX) {
+                        direction = 4;
+                    }
+                } else if (direction == 2) { //	↘
+                    x += dx;
+                    y += dy;
+                    if (item.y >= maxY) {
+                        direction = 1;
+                    } else if (item.x >= maxX) {
+                        direction = 3;
+                    }
+                } else if (direction == 3) { //	↙
+                    x -= dx;
+                    y += dy;
+                    if (item.x <= minX) {
+                        direction = 2;
+                    } else if (item.y >= maxY) {
+                        direction = 4;
+                    }
+                } else if (direction == 4) { //	↖
+                    x -= dx;
+                    y -= dy;
+                    if (item.y <= minY) {
+                        direction = 3;
+                    } else if (item.x <= minX) {
+                        direction = 1;
+                    }
+                }
+                item.x = x;
+                item.y = y;
+                item.direction = direction;
+            },
+            resetCrashState() {
+                for (let key = 0; key < this.items.length; key++) {
+                    this.items[key].crash = false;
+                }
+            },
+            changeCrashedType(item, item2) {
+                /*
+                1	камень
+                2	ножницы
+                3	бумага
+                */
+                var t1 = item.type;
+                var t2 = item2.type;
+                if (t1 != t2) {
+                    if (t1 == 1) {
+                        if (t2 == 2) {
+                            t2 = 1;
+                        } else if (t2 == 3) {
+                            t1 = 3;
+                        }
+                    } else if (t1 == 2) {
+                        if (t2 == 3) {
+                            t2 = 2;
+                        } else if (t2 == 1) {
+                            t1 = 1;
+                        }
+                    } else if (t1 == 3) {
+                        if (t2 == 1) {
+                            t2 = 3;
+                        } else if (t2 == 2) {
+                            t1 = 2;
+                        }
+                    }
+                }
+                item.type = t1;
+                item2.type = t2;
+            },
+            setCrashedNewDirection(item, item2) {
+                var d1 = item.direction;
+                var d2 = item2.direction;
+                d1 = this.random(1, 3);
+                d2 = this.random(1, 3);
+                while (d1 == d2) {
+                    d1 = this.random(1, 3);
+                    d2 = this.random(1, 3);
+                }
+                item.direction = d1;
+                item2.direction = d2;
+            },
+            isCrash(item, item2, halfW) {
+                const {type, x, y} = item;
+                const {type: type2, x: x2, y: y2} = item2;
+                return !(type == type2 || x + halfW < x2 || x2 + halfW < x || y + halfW < y2 || y2 + halfW < y);
+            },
+            getNewDirection: function (direction, direction2) {
+                var res;
+                if (direction == 1) {
+                    res = 3;
+                } else if (direction == 2) {
+                    res = 4;
+                } else if (direction == 3) {
+                    res = 1;
+                } else if (direction == 4) {
+                    res = 2;
+                }
+// if (direction2 && res == direction2) res = this.random(1,4);
+                return res;
+            },
+            itemStyle(item) {
+                var res = {
+                    transform: `translate(${item.x}px, ${item.y}px)`,
+                    // transitionDuration: (this.interval / 1000) + 's'
+                }
+                if (item.crash) res.background = 'red';
+                return res;
+            },
+            random(min, max) {
+                let rand = min - 0.5 + Math.random() * (max - min + 1);
+                return Math.round(rand);
+            },
+            go() {
+                for (var i = 1; i <= this.cnt; i++) {
+                    this.addItem();
+                }
+            },
+            addItem() {
+                var item = {
+                    type: this.random(1, 3),
+                    direction: this.random(1, 4),
+                    crash: false,
+                    x: this.random(this.minX, this.maxX),
+                    y: this.random(this.minY, this.maxY)
+                }
+                this.items.push(item);
+            },
+            refresh: function () {
+                this.items = [];
+                this.go();
+            }
+        }
+    })
+</script>
+</body>
+</html>
