@@ -25,5 +25,5 @@ export interface RPSCharacterType {
   label: string,
   avatarType: AvatarType,
   avatar: string,
-  cacheImage?: { x: any, y: any, w: any, h: any } | null,
+  cacheId?: string | null,
 }

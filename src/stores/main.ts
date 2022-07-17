@@ -39,5 +39,16 @@ export const useMainStore = defineStore('main', {
       }
       return null;
     },
+    updateType (typeId: number, data: any) {
+      const typeIndex = this.types.findIndex(t => t.id === typeId);
+      if (typeIndex === -1) return;
+      const t = {
+        ...this.types[typeIndex],
+        ...data,
+      };
+      this.types.splice(typeIndex, 1, t);
+      this.types = [...this.types];
+      this.typesIndex[typeId] = t;
+    },
   },
 });

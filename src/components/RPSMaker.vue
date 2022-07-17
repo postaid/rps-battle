@@ -2,6 +2,7 @@
 import AspectRatio from '@/components/AspectRatio.vue';
 import {defineProps, onBeforeMount, onBeforeUnmount, ref, watch} from 'vue';
 import type {RPSCharacterType} from '@/modules/types';
+import { drawCacheImage, getCachedData } from '@/modules/canvasCache';
 
 const props = defineProps<{
   types: RPSCharacterType[],
@@ -13,7 +14,6 @@ const canvas = ref<HTMLCanvasElement | null>(null);
 let ctx: CanvasRenderingContext2D | null = null;
 let fieldWidth = 0;
 let fieldHeight = 0;
-let animation = 0;
 
 function removeContext() {
   ctx = null;
@@ -42,6 +42,7 @@ function draw() {
   if (props.types.length === 0) return;
 
   drawTypes(ctx);
+  drawRelations(ctx);
 }
 
 function drawTypes(ctx: CanvasRenderingContext2D) {
@@ -59,16 +60,34 @@ function drawTypes(ctx: CanvasRenderingContext2D) {
   const ang = Math.PI * 2 / types.length;
   ctx.save();
   ctx.beginPath();
-  ctx.strokeStyle = 'blue';
   ctx.translate(cx, cy);
   ctx.rotate(-Math.PI / 2);
   for (let i = 0; i < types.length; i++) {
     ctx.moveTo(0, 0);
     ctx.lineTo(r, 0);
+    ctx.stroke();
+
+    const typeAngle = Math.PI / 2 - ang * i;
+    ctx.translate(r, 0);
+    ctx.rotate(typeAngle);
+    drawType(ctx, types[i]);
+    ctx.rotate(-typeAngle);
+    ctx.translate(-r, 0);
     ctx.rotate(ang);
   }
-  ctx.stroke();
   ctx.restore();
+}
+
+function drawType (ctx: CanvasRenderingContext2D, type: RPSCharacterType) {
+  if (type.cacheId) {
+    const cached = getCachedData(type.cacheId);
+    if (!cached) return;
+    drawCacheImage(ctx, type.cacheId, -cached.size.w / 2, -cached.size.h / 2);
+  }
+}
+
+function drawRelations(ctx: CanvasRenderingContext2D) {
+  const relations = props.relations;
 }
 
 function OnResize () {
@@ -90,7 +109,7 @@ watch(canvas, (element) => {
 
 watch([() => props.types, () => props.relations], () => {
   draw();
-});
+}, {immediate: true});
 
 onBeforeMount(() => {
   window.addEventListener('resize', OnResize);

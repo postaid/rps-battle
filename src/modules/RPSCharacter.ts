@@ -1,19 +1,13 @@
 import type { BBox, Position, Size } from '@/modules/types';
 import { getId } from '@/modules/IdGenerator';
 
-const idGenerator = getId();
-
-function generateId () {
-  return idGenerator.next().value + '';
-}
-
 export class RPSCharacter {
-  id: string = generateId();
+  id: string = '' + getId();
   type = 0;
-  position: Position = {x: 0, y: 0};
-  size: Size = {w: 20, h: 20};
-  speed: Position = {x: 0.05, y: 0.05};
-  bbox: BBox = {x0: 0, y0: 0, x1: 0, y1: 0};
+  position: Position = { x: 0, y: 0 };
+  size: Size = { w: 20, h: 20 };
+  speed: Position = { x: 0.05, y: 0.05 };
+  bbox: BBox = { x0: 0, y0: 0, x1: 0, y1: 0 };
   customData: any = {};
 
   moveBy (dx: number, dy: number) {
